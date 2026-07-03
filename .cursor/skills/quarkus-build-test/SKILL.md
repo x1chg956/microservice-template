@@ -5,7 +5,9 @@ description: Build, test, smoke-test, and run this Quarkus service - Maven wrapp
 
 # Quarkus build and test
 
-All commands run from the repo root with the Maven wrapper. Use `-B` in non-interactive contexts.
+This project builds exclusively with Maven via the checked-in wrapper (`./mvnw`). Do not use Gradle: there is no Gradle build here, so `gradle`/`gradlew` commands and the Gradle variants shown in Quarkus docs (`quarkusDev`, `quarkusBuild`, `build.gradle` snippets) do not apply. Translate any Gradle-based upstream example to its Maven equivalent before using it.
+
+All commands run from the repo root. Use `-B` in non-interactive contexts.
 
 ## Commands
 

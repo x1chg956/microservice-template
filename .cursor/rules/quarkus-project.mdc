@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Project: Quarkus microservice template
 
-Java 21 + Quarkus (REST/Jackson, JDBC PostgreSQL), built with the Maven wrapper. There is no JavaScript/TypeScript in this repo; ignore TS-specific rules.
+Java 21 + Quarkus (REST/Jackson, JDBC PostgreSQL), built with the Maven wrapper (`./mvnw`) only — this is not a Gradle project; never use `gradle`/`gradlew` commands or Gradle snippets from Quarkus docs. There is no JavaScript/TypeScript in this repo; ignore TS-specific rules.
 
 - Build: `./mvnw -B compile` — Tests: `./mvnw -B test` — Full verify + integration tests: `./mvnw -B verify -DskipITs=false`
 - Dev server: `./mvnw quarkus:dev` (HTTP 8080, debug 5005)

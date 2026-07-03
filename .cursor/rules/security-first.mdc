@@ -1,0 +1,38 @@
+---
+description: Security-first development standards and mandatory scan stages for this Quarkus service
+alwaysApply: true
+---
+
+# Security-first development
+
+This service is a Quarkus REST API (Java 21, JDBC PostgreSQL, Jackson). Apply these standards to every change, and run the scan gates below at the stages indicated.
+
+## Secure coding standards
+
+- **SQL**: Only parameterized queries (`PreparedStatement`, Panache/JPA named parameters). Never concatenate or format untrusted input into SQL, JPQL, or native queries.
+- **Input validation**: Validate all request input at the REST boundary. Bind request bodies to explicit DTO classes with Bean Validation annotations (`@NotNull`, `@Size`, `@Pattern`, ...). Never bind to `Map<String, Object>`, `JsonNode`, or `Object`.
+- **Deserialization**: No Jackson default/polymorphic typing (`activateDefaultTyping`, `@JsonTypeInfo` with open class hierarchies). No Java native serialization of untrusted data.
+- **AuthN/AuthZ**: Every new REST endpoint must declare access explicitly — `@RolesAllowed`/`@Authenticated`, or a code comment justifying why it is `@PermitAll`/public. Do not rely on "not linked from anywhere" as protection.
+- **Secrets**: Never hardcode credentials, tokens, or keys in code, `application.properties`, Dockerfiles, or tests. Use environment variables or a config source (`${DB_PASSWORD}` style references). Placeholder values in examples must be obviously fake.
+- **Logging and errors**: Never log secrets, session tokens, or full request bodies. Do not return exception messages, stack traces, or internal identifiers to clients; map to generic error responses.
+- **File and path handling**: Any user-influenced path must be resolved against a fixed base directory and checked with `Path.normalize()` + `startsWith(base)` before use.
+- **Outbound requests (SSRF)**: Never fetch a URL taken directly from user input. Validate against an allowlist of hosts or schemes first.
+- **Crypto**: Use JDK/Quarkus-provided primitives only. `SecureRandom` for anything security-relevant; no MD5/SHA-1 for security purposes; no homegrown crypto.
+- **Dependencies**: Prefer versions managed by the Quarkus BOM. Adding or upgrading a dependency requires a vulnerability scan (see gates below) before commit.
+- **Dockerfiles**: Run as non-root, pin base images, never COPY secrets into images.
+
+## Mandatory scan gates
+
+Use the `security-scan` skill (`.cursor/skills/security-scan/SKILL.md`) for exact commands.
+
+| Stage | Required scans |
+|---|---|
+| Before every commit | Secrets scan on staged changes (gitleaks) |
+| Before push / opening or updating a PR | SAST on the diff (Semgrep) + bytecode SAST (SpotBugs/FindSecBugs via `./mvnw compile spotbugs:check`) + dependency and misconfig scan (Trivy) if `pom.xml` or Dockerfiles changed |
+| CI (enforced) | Full suite in `.github/workflows/security.yml`; treat failures as blockers, not advisories |
+
+## Handling findings
+
+- Fix findings rather than suppressing them. A suppression (`.semgrepignore`, `.trivyignore`, `.gitleaksignore`, SpotBugs filter) requires an inline justification comment and must be scoped to the specific finding, never a whole file or rule class.
+- Never delete, weaken, or bypass a security scan, gate, or CI job to make a build pass.
+- If a real leaked secret is found in history, report it immediately: the credential must be rotated — removing it from the file is not enough.

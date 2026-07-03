@@ -1,0 +1,71 @@
+name: Security scans
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Weekly re-scan so newly disclosed CVEs in unchanged dependencies still surface.
+    - cron: '0 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  secrets-gitleaks:
+    name: Secrets scan (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history so leaks in past commits are caught, not just the diff.
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  sast-semgrep:
+    name: SAST (Semgrep)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v6
+      - name: Semgrep scan
+        run: >-
+          semgrep scan
+          --config p/java
+          --config p/security-audit
+          --config p/secrets
+          --metrics=off
+          --error
+          --text
+
+  sast-spotbugs:
+    name: SAST (SpotBugs + FindSecBugs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: temurin
+          cache: maven
+      - name: SpotBugs security check
+        run: ./mvnw -B compile spotbugs:check
+
+  deps-and-config-trivy:
+    name: Dependencies and misconfig (Trivy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
